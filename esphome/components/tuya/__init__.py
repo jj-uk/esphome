@@ -13,6 +13,11 @@ CONF_IGNORE_MCU_UPDATE_ON_DATAPOINTS = "ignore_mcu_update_on_datapoints"
 CONF_ON_DATAPOINT_UPDATE = "on_datapoint_update"
 CONF_DATAPOINT_TYPE = "datapoint_type"
 CONF_STATUS_PIN = "status_pin"
+CONF_STATUS_MODE = "status_mode"
+CONF_MINUTE_SYNC = "minute_sync"
+CONF_COMMAND_DELAY = "command_delay"
+CONF_RECEIVE_TIMEOUT = "receive_timeout"
+CONF_DBG_SUPPRESS_DP_UPDATE_MSGS = "dbg_suppress_dp_update_msgs"
 
 tuya_ns = cg.esphome_ns.namespace("tuya")
 Tuya = tuya_ns.class_("Tuya", cg.Component, uart.UARTDevice)
@@ -72,6 +77,8 @@ DATAPOINT_TRIGGERS = {
     ),
 }
 
+STATUS_MODE_TYPES = {"manual": False, "auto": True}
+
 
 def assign_declare_id(value):
     value = value.copy()
@@ -91,6 +98,7 @@ CONFIG_SCHEMA = (
                 cv.uint8_t
             ),
             cv.Optional(CONF_STATUS_PIN): pins.gpio_output_pin_schema,
+            cv.Optional(CONF_STATUS_MODE): cv.one_of(*STATUS_MODE_TYPES, lower=True),
             cv.Optional(CONF_ON_DATAPOINT_UPDATE): automation.validate_automation(
                 {
                     cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
@@ -103,6 +111,10 @@ CONFIG_SCHEMA = (
                 },
                 extra_validators=assign_declare_id,
             ),
+            cv.Optional(CONF_MINUTE_SYNC): cv.boolean,
+            cv.Optional(CONF_COMMAND_DELAY): cv.uint32_t,
+            cv.Optional(CONF_RECEIVE_TIMEOUT): cv.uint32_t,
+            cv.Optional(CONF_DBG_SUPPRESS_DP_UPDATE_MSGS): cv.boolean,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -114,19 +126,42 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
+
     if CONF_TIME_ID in config:
         time_ = await cg.get_variable(config[CONF_TIME_ID])
         cg.add(var.set_time_id(time_))
+
     if CONF_STATUS_PIN in config:
         status_pin_ = await cg.gpio_pin_expression(config[CONF_STATUS_PIN])
         cg.add(var.set_status_pin(status_pin_))
+
+    if CONF_STATUS_MODE in config:
+        cg.add(var.set_status_mode(STATUS_MODE_TYPES[config[CONF_STATUS_MODE]]))
+
     if CONF_IGNORE_MCU_UPDATE_ON_DATAPOINTS in config:
         for dp in config[CONF_IGNORE_MCU_UPDATE_ON_DATAPOINTS]:
             cg.add(var.add_ignore_mcu_update_on_datapoints(dp))
+
     for conf in config.get(CONF_ON_DATAPOINT_UPDATE, []):
         trigger = cg.new_Pvariable(
             conf[CONF_TRIGGER_ID], var, conf[CONF_SENSOR_DATAPOINT]
         )
         await automation.build_automation(
             trigger, [(DATAPOINT_TYPES[conf[CONF_DATAPOINT_TYPE]], "x")], conf
+        )
+
+    if CONF_MINUTE_SYNC in config:
+        cg.add(var.set_minute_sync(config[CONF_MINUTE_SYNC]))
+
+    if CONF_COMMAND_DELAY in config:
+        cg.add(var.set_command_delay(config[CONF_COMMAND_DELAY]))
+
+    if CONF_RECEIVE_TIMEOUT in config:
+        cg.add(var.set_receive_timeout(config[CONF_RECEIVE_TIMEOUT]))
+
+    if CONF_DBG_SUPPRESS_DP_UPDATE_MSGS in config:
+        cg.add(
+            var.set_dbg_suppress_dp_update_msgs(
+                config[CONF_DBG_SUPPRESS_DP_UPDATE_MSGS]
+            )
         )

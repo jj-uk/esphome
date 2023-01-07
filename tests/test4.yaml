@@ -61,6 +61,11 @@ tuya:
   status_pin:
     number: 14
     inverted: true
+  status_mode: "auto"
+  minute_sync: true
+  command_delay: 30
+  receive_timeout: 350
+  dbg_suppress_dp_update_msgs: true 
 
 select:
   - platform: tuya
