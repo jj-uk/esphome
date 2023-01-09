@@ -91,12 +91,17 @@ void Tuya::dump_config() {
     ESP_LOGCONFIG(TAG, "  GPIO Configuration: status: pin %d, reset: pin %d", this->status_pin_reported_,
                   this->reset_pin_reported_);
   }
+  ESP_LOGCONFIG(TAG, "  Product: '%s'", this->product_.c_str());
+
   if (this->status_pin_.has_value()) {
     LOG_PIN("  Status Pin: ", this->status_pin_.value());
   }
-  ESP_LOGCONFIG(TAG, "  Product: '%s'", this->product_.c_str());
+
+  ESP_LOGCONFIG(TAG, "  Status Mode: %s", (this->status_mode_) ? "auto" : "manual");
+  ESP_LOGCONFIG(TAG, "  Minute Sync: %s", TRUEFALSE(this->minute_sync_));
   ESP_LOGCONFIG(TAG, "  Command Delay: %u", this->command_delay_);
   ESP_LOGCONFIG(TAG, "  Receive Timeout: %u", this->receive_timeout_);
+  ESP_LOGCONFIG(TAG, "  Suppress DP Update Messages: %s", TRUEFALSE(this->dbg_suppress_dp_update_msgs_));
 
   this->check_uart_settings(9600);
 }
