@@ -79,6 +79,8 @@ class Tuya : public Component, public uart::UARTDevice {
   void dump_config() override;
   void register_listener(uint8_t datapoint_id, const std::function<void(TuyaDatapoint)> &func);
 
+  void query_datapoints() { this->send_empty_command_(TuyaCommandType::DATAPOINT_QUERY); }
+  
   void set_status_pin(InternalGPIOPin *status_pin) { this->status_pin_ = status_pin; }
   void set_status_mode(bool status_mode) { this->status_mode_ = status_mode; }
   void set_status_update_mode_manual() { this->set_status_update_mode_(false); }
@@ -87,7 +89,7 @@ class Tuya : public Component, public uart::UARTDevice {
     this->dbg_suppress_dp_update_msgs_ =
         dbg_suppress_dp_update_msgs;  // suppress ESPD(..) received datapoint messages to reduce noise when debugging
   }
-  void force_wifi_status(uint8_t status);  // send a specific wifi status code to the MCU
+  void set_wifi_status(uint8_t status);  // send a specific wifi status code to the MCU
   void set_command_delay(uint32_t command_delay) { this->command_delay_ = command_delay; }
   void set_receive_timeout(uint32_t receive_timeout) { this->receive_timeout_ = receive_timeout; }
 
@@ -108,7 +110,7 @@ class Tuya : public Component, public uart::UARTDevice {
 #ifdef USE_TIME
   void set_time_id(time::RealTimeClock *time_id) { this->time_id_ = time_id; }
   void set_minute_sync(bool minute_sync) { this->minute_sync_ = minute_sync; }
-  void send_default_time();  // reset date/time to 2020-01-01 00:00:00
+  void reset_time();  // reset date/time to 2020-01-01 00:00:00
 #endif
   void add_ignore_mcu_update_on_datapoints(uint8_t ignore_mcu_update_on_datapoints) {
     this->ignore_mcu_update_on_datapoints_.push_back(ignore_mcu_update_on_datapoints);

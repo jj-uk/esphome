@@ -461,8 +461,9 @@ void Tuya::handle_datapoints_(const uint8_t *buffer, size_t len) {
 
     // Run through listeners
     for (auto &listener : this->listeners_) {
-      if (listener.datapoint_id == datapoint.id)
+      if (listener.datapoint_id == datapoint.id) {
         listener.on_datapoint(datapoint);
+      }
     }
   }
 }
@@ -569,33 +570,32 @@ void Tuya::send_wifi_status_() {
   this->send_command_(TuyaCommand{.cmd = TuyaCommandType::WIFI_STATE, .payload = std::vector<uint8_t>{status}});
 }
 
-void Tuya::force_wifi_status(uint8_t status) {
+void Tuya::set_wifi_status(uint8_t status) {
+  if (status == this->wifi_status_) {
+    return;
+  }
+
   if (this->status_pin_.has_value()) {
     // (using status pin to indicate wifi state)
     if ((status != 0x00) && (status != 0x01)) {
       ESP_LOGE(TAG, "Value (%u) out of range 0|1", status);
       return;
     }
-    // Switch to manual mode
-    this->set_status_update_mode_(false);
-    ESP_LOGD(TAG, "Forcing WiFi Status to %u", status);
-
-    // status = 0x00 = off
-    // status = 0x01 = on
-    this->status_pin_.value()->digital_write(static_cast<bool>(status));
+    this->set_status_update_mode_(false);  // Switch to manual mode
+    this->status_pin_.value()->digital_write(static_cast<bool>(status));  // status: 0x00=off, 0x01=on
+    ESP_LOGD(TAG, "Set WiFi Status to %u", status);
   } else {
     // (using Tuya protocol to indicate wifi state)
     if ((status < 0x02) || (status > 0x04)) {
       ESP_LOGE(TAG, "Value (%u) out of range 2|3|4", status);
       return;
     }
-    // Switch to manual mode
-    this->set_status_update_mode_(false);
-
-    ESP_LOGD(TAG, "Forcing WiFi Status to %u", status);
-    this->wifi_status_ = status;
+    this->set_status_update_mode_(false);  // Switch to manual mode
     this->send_command_(TuyaCommand{.cmd = TuyaCommandType::WIFI_STATE, .payload = std::vector<uint8_t>{status}});
+    ESP_LOGD(TAG, "Set WiFi Status to %u", status);
   }
+  // set after send to prevent send_command_() from blocking the update
+  this->wifi_status_ = status;
 }
 
 void Tuya::set_status_update_mode_(bool is_periodic) {
@@ -639,11 +639,11 @@ void Tuya::send_local_time_() {
       this->send_command_(TuyaCommand{.cmd = TuyaCommandType::LOCAL_TIME_QUERY, .payload = payload});
     }
   } else {
-    ESP_LOGW(TAG, "Send local time not sent because 'time_id' not configured");
+    ESP_LOGW(TAG, "Send local time not sent: 'time_id' not configured");
   }
 }
 
-void Tuya::send_default_time() {
+void Tuya::reset_time() {
   std::vector<uint8_t> payload;
   ESP_LOGD(TAG, "Sending default date/time 2020-01-01 00:00:00 (saturday)");
   payload = std::vector<uint8_t>{0x01, 20, 1, 1, 0, 0, 0, 6};  // YY MM DD HH MM SS DAY
